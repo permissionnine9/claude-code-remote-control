@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Claude Code Remote</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f172a; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Header */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #1e293b; border-bottom: 1px solid #334155; flex-shrink: 0; }
+  header h1 { font-size: 14px; font-weight: bold; color: white; }
+  .header-left { display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .status-idle { background: #6b7280; }
+  .status-running { background: #22c55e; animation: pulse 1.5s infinite; }
+  .status-waiting { background: #eab308; animation: pulse 1s infinite; }
+  .status-error { background: #ef4444; }
+  .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+  .badge-connected { background: #166534; color: #86efac; }
+  .badge-disconnected { background: #374151; color: #9ca3af; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .header-btns { display: flex; gap: 6px; }
+  .header-btns button { padding: 4px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+  .btn-interrupt { background: #991b1b; color: #fca5a5; }
+  .btn-interrupt:hover:not(:disabled) { background: #b91c1c; }
+  .btn-new { background: #334155; color: #cbd5e1; }
+  .btn-new:hover:not(:disabled) { background: #475569; }
+  button:disabled { background: #1e293b !important; color: #4b5563 !important; cursor: not-allowed; }
+
+  /* Connect Panel */
+  #connectPanel { display: flex; align-items: center; justify-content: center; flex: 1; }
+  .connect-card { background: #1e293b; border-radius: 12px; padding: 32px; width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .connect-card h2 { text-align: center; font-size: 18px; font-weight: bold; color: white; margin-bottom: 24px; }
+  .connect-card label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+  .connect-card input { width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: white; font-size: 14px; font-family: inherit; outline: none; margin-bottom: 16px; }
+  .connect-card input:focus { border-color: #3b82f6; }
+  .connect-card button { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .connect-card button:hover { background: #1d4ed8; }
+
+  /* Terminal Panel */
+  #terminalPanel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+  #terminalPanel.visible { display: flex; }
+  #termContainer { flex: 1; overflow: hidden; padding: 4px; background: #000; }
+
+  /* Input bar */
+  .input-bar { display: flex; gap: 6px; padding: 6px 8px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; }
+  .input-bar input { flex: 1; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: white; font-size: 14px; font-family: inherit; outline: none; }
+  .input-bar input:focus { border-color: #3b82f6; }
+  .input-bar button { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .input-bar button:hover { background: #1d4ed8; }
+
+  /* Virtual keyboard (mobile) */
+  .vk-bar { display: none; padding: 4px 8px 8px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  @media (max-width: 768px) { .vk-bar { display: flex; } }
+  .vk-bar button { padding: 8px 14px; background: #334155; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; min-width: 44px; text-align: center; }
+  .vk-bar button:active { background: #475569; }
+
+  /* xterm overrides */
+  .xterm { height: 100%; }
+  .xterm-viewport { overflow-y: auto !important; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <h1>Claude Code Remote 1</h1>
+    <span id="statusBadge" class="status-badge badge-disconnected">Disconnected</span>
+    <span class="status-dot status-idle" id="statusDot"></span>
+  </div>
+  <div class="header-btns">
+    <button id="btnInterrupt" class="btn-interrupt" onclick="doInterrupt()" disabled>Interrupt</button>
+    <button id="btnNewSession" class="btn-new" onclick="doNewSession()" disabled>New Session</button>
+  </div>
+</header>
+
+<!-- Connect Panel -->
+<div id="connectPanel">
+  <div class="connect-card">
+    <h2>Connect to Bridge</h2>
+    <label>Bridge URL</label>
+    <input id="inputUrl" type="text" placeholder="ws://localhost:3456/ws">
+    <label>Token</label>
+    <input id="inputToken" type="text" placeholder="Paste your token">
+    <button onclick="doConnect()">Connect</button>
+  </div>
+</div>
+
+<!-- Terminal Panel -->
+<div id="terminalPanel">
+  <div id="termContainer"></div>
+  <div class="input-bar">
+    <input id="inputMsg" type="text" placeholder="Type a message and press Enter..."
+      onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();doSend()}">
+    <button onclick="doSend()">Send</button>
+  </div>
+  <div class="vk-bar">
+    <button onclick="sendInput('\t')">Tab</button>
+    <button onclick="sendInput('\x03')">Ctrl+C</button>
+    <button onclick="sendInput('\x1b[A')">Up</button>
+    <button onclick="sendInput('\x1b[B')">Down</button>
+    <button onclick="sendInput('\x1b[D')">Left</button>
+    <button onclick="sendInput('\x1b[C')">Right</button>
+    <button onclick="sendInput('\x1b[1;5A')">Ctrl+Up</button>
+    <button onclick="sendInput('\x1b[1;5B')">Ctrl+Down</button>
+    <button onclick="sendInput('\x7f')">Backspace</button>
+    <button onclick="sendInput('\r')">Enter</button>
+    <button onclick="sendInput('\x1b')">Esc</button>
+  </div>
+</div>
+
+<script>
+let ws = null;
+let term = null;
+let fitAddon = null;
+
+function setStatus(text) {
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = text;
+  badge.className = 'status-badge ' + (text === 'Connected' ? 'badge-connected' : 'badge-disconnected');
+}
+
+function setClaudeStatus(status) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot status-' + ({ idle: 'idle', running: 'running', waiting_permission: 'waiting', error: 'error' }[status] || 'idle');
+}
+
+function initTerminal() {
+  if (term) return;
+  term = new Terminal({
+    theme: {
+      background: '#0f172a',
+      foreground: '#e2e8f0',
+      cursor: '#5eead4',
+      selectionBackground: '#334155',
+      black: '#1e293b',
+      red: '#f87171',
+      green: '#4ade80',
+      yellow: '#facc15',
+      blue: '#60a5fa',
+      magenta: '#c084fc',
+      cyan: '#22d3ee',
+      white: '#f1f5f9',
+      brightBlack: '#64748b',
+      brightRed: '#fca5a5',
+      brightGreen: '#86efac',
+      brightYellow: '#fde047',
+      brightBlue: '#93c5fd',
+      brightMagenta: '#d8b4fe',
+      brightCyan: '#67e8f9',
+      brightWhite: '#ffffff',
+    },
+    fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
+    fontSize: 14,
+    lineHeight: 1.2,
+    cursorBlink: true,
+    scrollback: 10000,
+    allowProposedApi: true,
+  });
+
+  fitAddon = new FitAddon.FitAddon();
+  term.loadAddon(fitAddon);
+  term.loadAddon(new WebLinksAddon.WebLinksAddon());
+
+  const container = document.getElementById('termContainer');
+  term.open(container);
+
+  // Fit after a short delay so the container has dimensions
+  requestAnimationFrame(() => {
+    fitAddon.fit();
+  });
+
+  // Forward terminal keystrokes to PTY
+  term.onData((data) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'input', data }));
+    }
+  });
+
+  // Send resize to backend
+  term.onResize(({ cols, rows }) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+    }
+  });
+
+  // Refit on window resize
+  const ro = new ResizeObserver(() => {
+    if (fitAddon) fitAddon.fit();
+  });
+  ro.observe(container);
+}
+
+function doConnect() {
+  const url = document.getElementById('inputUrl').value.trim() || `ws://${location.host}/ws`;
+  const token = document.getElementById('inputToken').value.trim();
+  if (!token) { alert('Token required'); return; }
+
+  ws = new WebSocket(url);
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: 'auth', token }));
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleServerMessage(msg);
+  };
+  ws.onclose = (e) => {
+    setStatus('Disconnected');
+    document.getElementById('connectPanel').style.display = 'flex';
+    document.getElementById('terminalPanel').classList.remove('visible');
+    if (e.code === 4001) alert('Authentication failed');
+  };
+  ws.onerror = () => setStatus('Disconnected');
+}
+
+function handleServerMessage(msg) {
+  switch (msg.type) {
+    case 'connected':
+      setStatus('Connected');
+      document.getElementById('connectPanel').style.display = 'none';
+      document.getElementById('terminalPanel').classList.add('visible');
+      document.getElementById('btnInterrupt').disabled = false;
+      document.getElementById('btnNewSession').disabled = false;
+
+      initTerminal();
+
+      // Send initial terminal size
+      if (term) {
+        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+      }
+      break;
+
+    case 'raw_output':
+      // Write raw PTY output directly to xterm
+      if (term) term.write(msg.data);
+      break;
+
+    case 'stream':
+      // Structured events — forward as text since raw_output has the visual data
+      // We can optionally display stream events as overlays or ignore them
+      // since raw_output already provides the full terminal rendering.
+      break;
+
+    case 'permission_request':
+      // Permission prompts are handled in the terminal itself via raw_output
+      // (Claude shows y/n prompts in the TUI). No separate dialog needed.
+      break;
+
+    case 'status':
+      setClaudeStatus(msg.status);
+      break;
+
+    case 'pong':
+      break;
+
+    case 'error':
+      if (term) term.write('\r\n\x1b[31m[Error] ' + msg.message + '\x1b[0m\r\n');
+      break;
+  }
+}
+
+function sendInput(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'input', data }));
+  }
+}
+
+function doSend() {
+  const input = document.getElementById('inputMsg');
+  const content = input.value;
+  if (!content || !ws) return;
+  // Send via the structured message protocol (also writes to PTY via sendMessage)
+  ws.send(JSON.stringify({ type: 'send_message', content }));
+  input.value = '';
+}
+
+function doInterrupt() {
+  if (ws) ws.send(JSON.stringify({ type: 'interrupt' }));
+}
+
+function doNewSession() {
+  if (ws) {
+    ws.send(JSON.stringify({ type: 'session_new' }));
+    if (term) term.clear();
+  }
+}
+
+// Keep-alive ping
+setInterval(() => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'ping' }));
+  }
+}, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# Source files
+src/
+examples/
+test-proxy.sh
+
+# Config files
+tsconfig.json
+.gitignore
+.eslintrc
+.prettierrc
+
+# Development
+node_modules/
+*.log
+.DS_Store
+
+# Git
+.git/
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Documentation (included via files in package.json)
+# README.md and LICENSE are included via package.json files field
