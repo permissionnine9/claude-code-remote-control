@@ -86,7 +86,7 @@
   <div class="connect-card">
     <h2>Connect to Bridge</h2>
     <label>Bridge URL</label>
-    <input id="inputUrl" type="text" placeholder="ws://localhost:3456/ws">
+    <input id="inputUrl" type="text" placeholder="<YourWebPageHost>:3456/ws">
     <label>Token</label>
     <input id="inputToken" type="text" placeholder="Paste your token">
     <button onclick="doConnect()">Connect</button>
@@ -120,6 +120,12 @@
 let ws = null;
 let term = null;
 let fitAddon = null;
+
+// Auto-fill Bridge URL based on current page address
+(function() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  document.getElementById('inputUrl').value = proto + '//' + location.host + '/ws';
+})();
 
 function setStatus(text) {
   const badge = document.getElementById('statusBadge');
