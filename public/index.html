@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Claude Code Remote</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+<link rel="stylesheet" href="./refers/xterm.min.css">
+<script src="./refers/xterm.min.js"></script>
+<script src="./refers/addon-fit.min.js"></script>
+<script src="./refers/addon-web-links.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0f172a; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -110,21 +110,21 @@
   <div id="termContainer"></div>
   <div class="input-bar">
     <input id="inputMsg" type="text" placeholder="Type a message and press Enter..."
-      onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();doSend()}">
-    <button onclick="doSend()">Send</button>
+      onkeydown="handleInputKey(event)">
+    <button onclick="doSend()" ontouchend="event.preventDefault();doSend();return false;">Send</button>
   </div>
   <div class="vk-bar">
-    <button onclick="sendInput('\t')">Tab</button>
-    <button onclick="sendInput('\x03')">Ctrl+C</button>
-    <button onclick="sendInput('\x1b[A')">Up</button>
-    <button onclick="sendInput('\x1b[B')">Down</button>
-    <button onclick="sendInput('\x1b[D')">Left</button>
-    <button onclick="sendInput('\x1b[C')">Right</button>
-    <button onclick="sendInput('\x1b[1;5A')">Ctrl+Up</button>
-    <button onclick="sendInput('\x1b[1;5B')">Ctrl+Down</button>
-    <button onclick="sendInput('\x7f')">Backspace</button>
-    <button onclick="sendInput('\r')">Enter</button>
-    <button onclick="sendInput('\x1b')">Esc</button>
+    <button onclick="sendInput('\t')" ontouchend="event.preventDefault();sendInput('\t');return false;">Tab</button>
+    <button onclick="sendInput('\x03')" ontouchend="event.preventDefault();sendInput('\x03');return false;">Ctrl+C</button>
+    <button onclick="sendInput('\x1b[A')" ontouchend="event.preventDefault();sendInput('\x1b[A');return false;">Up</button>
+    <button onclick="sendInput('\x1b[B')" ontouchend="event.preventDefault();sendInput('\x1b[B');return false;">Down</button>
+    <button onclick="sendInput('\x1b[D')" ontouchend="event.preventDefault();sendInput('\x1b[D');return false;">Left</button>
+    <button onclick="sendInput('\x1b[C')" ontouchend="event.preventDefault();sendInput('\x1b[C');return false;">Right</button>
+    <button onclick="sendInput('\x1b[1;5A')" ontouchend="event.preventDefault();sendInput('\x1b[1;5A');return false;">Ctrl+Up</button>
+    <button onclick="sendInput('\x1b[1;5B')" ontouchend="event.preventDefault();sendInput('\x1b[1;5B');return false;">Ctrl+Down</button>
+    <button onclick="sendInput('\x7f')" ontouchend="event.preventDefault();sendInput('\x7f');return false;">Backspace</button>
+    <button onclick="sendInput('\r')" ontouchend="event.preventDefault();sendInput('\r');return false;">Enter</button>
+    <button onclick="sendInput('\x1b')" ontouchend="event.preventDefault();sendInput('\x1b');return false;">Esc</button>
   </div>
 </div>
 
@@ -132,6 +132,13 @@
 let ws = null;
 let term = null;
 let fitAddon = null;
+
+function handleInputKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    doSend();
+  }
+}
 
 // Auto-fill Bridge URL based on current page address
 (function() {
