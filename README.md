@@ -38,6 +38,8 @@ Scan QR code to connect (expires in 5 min):
 
 手机扫码 → 自动连接，无需手动输入 Token。QR 码 5 分钟内有效，过期后需重新启动服务。
 
+![链接成功](./docs/images/remote_web_view.png)
+
 如果 cloudflared 未安装或启动超时，会自动降级为本地模式（不影响正常使用）。
 
 ## CLI 命令参考
@@ -92,7 +94,9 @@ export HOMEBREW_NO_ENV_HINTS="1"
 # 步骤3
 cloudflared --version
 ```
+
 #### 方式二、安装二进制安装包
+
 ```bash
 # 步骤1
 进入https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads 安装官方提供的releae包
