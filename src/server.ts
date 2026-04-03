@@ -265,6 +265,7 @@ export class BridgeServer {
     if (this.tunnelUrl) {
       const qrLink = this.generateQrLink()
       console.log('\nScan QR code to connect (expires in 5 min):')
+      console.log('\nIf the page show 1033 error code,Please wait 1 minute and try again later!')
       qrcode.generate(qrLink, { small: true })
     }
   }

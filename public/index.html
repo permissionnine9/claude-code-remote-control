@@ -8,13 +8,14 @@
 <script src="./refers/xterm.min.js"></script>
 <script src="./refers/addon-fit.min.js"></script>
 <script src="./refers/addon-web-links.min.js"></script>
+<script src="./refers/addon-webgl.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0f172a; color: #e2e8f0; font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
   /* Header */
-  header { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #1e293b; border-bottom: 1px solid #334155; flex-shrink: 0; }
-  header h1 { font-size: 14px; font-weight: bold; color: white; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 4px 10px; background: #1e293b; border-bottom: 1px solid #334155; flex-shrink: 0; }
+  header h1 { font-size: 13px; font-weight: bold; color: white; }
   .header-left { display: flex; align-items: center; gap: 8px; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .status-idle { background: #6b7280; }
@@ -26,7 +27,7 @@
   .badge-disconnected { background: #374151; color: #9ca3af; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
   .header-btns { display: flex; gap: 6px; }
-  .header-btns button { padding: 4px 12px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+  .header-btns button { padding: 3px 10px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
   .btn-interrupt { background: #991b1b; color: #fca5a5; }
   .btn-interrupt:hover:not(:disabled) { background: #b91c1c; }
   .btn-new { background: #334155; color: #cbd5e1; }
@@ -43,23 +44,36 @@
   .connect-card button { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
   .connect-card button:hover { background: #1d4ed8; }
 
+  /* Auto-connect loading overlay */
+  .auto-connect-loading { display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 32px; text-align: center; }
+  .auto-connect-loading.visible { display: flex; }
+  .auto-connect-spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .auto-connect-loading p { font-size: 14px; color: #94a3b8; }
+  .auto-connect-loading p span { color: #e2e8f0; font-weight: 600; }
+
   /* Terminal Panel */
   #terminalPanel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
   #terminalPanel.visible { display: flex; }
-  #termContainer { flex: 1; overflow: hidden; padding: 4px; background: #000; }
+  #termContainer { flex: 1; overflow: hidden; padding: 2px; background: #000; }
 
-  /* Input bar */
-  .input-bar { display: flex; gap: 6px; padding: 6px 8px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; }
-  .input-bar input { flex: 1; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; border-radius: 6px; color: white; font-size: 14px; font-family: inherit; outline: none; }
-  .input-bar input:focus { border-color: #3b82f6; }
-  .input-bar button { padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
-  .input-bar button:hover { background: #1d4ed8; }
+  /* Action bar */
+  .action-bar { display: flex; gap: 6px; padding: 6px 8px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; justify-content: center; }
+  .action-bar button { padding: 10px 32px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .action-bar button:hover { background: #1d4ed8; }
 
   /* Virtual keyboard (mobile) */
-  .vk-bar { display: none; padding: 4px 8px 8px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .vk-bar { display: none; padding: 3px 8px 12px; background: #1e293b; border-top: 1px solid #334155; flex-shrink: 0; gap: 3px; flex-wrap: wrap; justify-content: center; }
   @media (max-width: 768px) { .vk-bar { display: flex; } }
-  .vk-bar button { padding: 8px 14px; background: #334155; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; font-size: 13px; font-family: inherit; cursor: pointer; min-width: 44px; text-align: center; }
+  .vk-bar button { padding: 6px 12px; background: #334155; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; font-size: 12px; font-family: inherit; cursor: pointer; min-width: 40px; text-align: center; }
   .vk-bar button:active { background: #475569; }
+
+  /* Slash command panel */
+  .slash-panel { display: none; padding: 4px 8px; background: #0f172a; border-top: 1px solid #334155; flex-shrink: 0; gap: 4px; flex-wrap: wrap; max-height: 180px; overflow-y: auto; }
+  .slash-panel.visible { display: flex; }
+  .slash-panel button { padding: 6px 10px; background: #1e3a5f; color: #93c5fd; border: 1px solid #2563eb; border-radius: 6px; font-size: 12px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+  .slash-panel button:active { background: #2563eb; color: white; }
+  .slash-panel button .cmd-desc { color: #64748b; font-size: 10px; margin-left: 4px; }
 
   /* xterm overrides */
   .xterm { height: 100%; }
@@ -96,22 +110,28 @@
 <!-- Connect Panel -->
 <div id="connectPanel">
   <div class="connect-card">
-    <h2>Connect to Bridge</h2>
-    <label>Bridge URL</label>
-    <input id="inputUrl" type="text" placeholder="<YourWebPageHost>:3456/ws">
-    <label>Token</label>
-    <input id="inputToken" type="text" placeholder="Paste your token">
-    <button onclick="doConnect()">Connect</button>
+    <div id="connectForm">
+      <h2>Connect to Bridge</h2>
+      <label>Bridge URL</label>
+      <input id="inputUrl" type="text" placeholder="<YourWebPageHost>:3456/ws">
+      <label>Token</label>
+      <input id="inputToken" type="text" placeholder="Paste your token">
+      <button onclick="doConnect()">Connect</button>
+    </div>
+    <div id="autoConnectLoading" class="auto-connect-loading">
+      <div class="auto-connect-spinner"></div>
+      <p><span>正在自动连接...</span></p>
+      <p style="margin-top: 8px;">扫码认证成功，正在建立连接</p>
+    </div>
   </div>
 </div>
 
 <!-- Terminal Panel -->
 <div id="terminalPanel">
   <div id="termContainer"></div>
-  <div class="input-bar">
-    <input id="inputMsg" type="text" placeholder="Type a message and press Enter..."
-      onkeydown="handleInputKey(event)">
+  <div class="action-bar">
     <button onclick="doSend()" ontouchend="event.preventDefault();doSend();return false;">Send</button>
+    <button id="btnSlashCmds" onclick="toggleSlashPanel()" ontouchend="event.preventDefault();toggleSlashPanel();return false;" style="background:#1e3a5f;color:#93c5fd;border-color:#2563eb;">Commands</button>
   </div>
   <div class="vk-bar">
     <button onclick="sendInput('\t')" ontouchend="event.preventDefault();sendInput('\t');return false;">Tab</button>
@@ -123,8 +143,24 @@
     <button onclick="sendInput('\x1b[1;5A')" ontouchend="event.preventDefault();sendInput('\x1b[1;5A');return false;">Ctrl+Up</button>
     <button onclick="sendInput('\x1b[1;5B')" ontouchend="event.preventDefault();sendInput('\x1b[1;5B');return false;">Ctrl+Down</button>
     <button onclick="sendInput('\x7f')" ontouchend="event.preventDefault();sendInput('\x7f');return false;">Backspace</button>
-    <button onclick="sendInput('\r')" ontouchend="event.preventDefault();sendInput('\r');return false;">Enter</button>
     <button onclick="sendInput('\x1b')" ontouchend="event.preventDefault();sendInput('\x1b');return false;">Esc</button>
+  </div>
+  <!-- Slash command panel -->
+  <div id="slashPanel" class="slash-panel">
+    <button onclick="sendSlashCommand('/clear')">/clear <span class="cmd-desc">清空对话</span></button>
+    <button onclick="sendSlashCommand('/compact')">/compact <span class="cmd-desc">压缩上下文</span></button>
+    <button onclick="sendSlashCommand('/help')">/help <span class="cmd-desc">帮助</span></button>
+    <button onclick="sendSlashCommand('/fast')">/fast <span class="cmd-desc">快速模式</span></button>
+    <button onclick="sendSlashCommand('/model')">/model <span class="cmd-desc">切换模型</span></button>
+    <button onclick="sendSlashCommand('/status')">/status <span class="cmd-desc">状态</span></button>
+    <button onclick="sendSlashCommand('/cost')">/cost <span class="cmd-desc">费用</span></button>
+    <button onclick="sendSlashCommand('/permissions')">/permissions <span class="cmd-desc">权限</span></button>
+    <button onclick="sendSlashCommand('/review')">/review <span class="cmd-desc">代码审查</span></button>
+    <button onclick="sendSlashCommand('/commit')">/commit <span class="cmd-desc">提交</span></button>
+    <button onclick="sendSlashCommand('/pr-comments')">/pr-comments <span class="cmd-desc">PR 评论</span></button>
+    <button onclick="sendSlashCommand('/memory')">/memory <span class="cmd-desc">记忆管理</span></button>
+    <button onclick="sendSlashCommand('/doctor')">/doctor <span class="cmd-desc">诊断</span></button>
+    <button onclick="sendSlashCommand('/bug')">/bug <span class="cmd-desc">报告 bug</span></button>
   </div>
 </div>
 
@@ -133,17 +169,11 @@ let ws = null;
 let term = null;
 let fitAddon = null;
 
-function handleInputKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    doSend();
-  }
-}
-
 // Auto-fill Bridge URL based on current page address
 (function() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  document.getElementById('inputUrl').value = proto + '//' + location.host + '/ws';
+  const host = location.host.startsWith('localhost') ? "<Your Server Host>:Port": location.host;
+  document.getElementById('inputUrl').value = proto + '//' + host + '/ws';
 
   // Auto-connect from URL params (QR code flow)
   const params = new URLSearchParams(location.search);
@@ -160,6 +190,10 @@ function handleInputKey(e) {
     }
 
     // Server-side verify (handles clock skew)
+    // Show loading state
+    document.getElementById('connectForm').style.display = 'none';
+    document.getElementById('autoConnectLoading').classList.add('visible');
+
     fetch(`/verify-token?token=${encodeURIComponent(autoToken)}&expires=${autoExpires}`)
       .then(r => r.json())
       .then(result => {
@@ -215,8 +249,8 @@ function initTerminal() {
       brightWhite: '#ffffff',
     },
     fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace",
-    fontSize: 14,
-    lineHeight: 1.2,
+    fontSize: 13,
+    lineHeight: 1.1,
     cursorBlink: true,
     scrollback: 10000,
     allowProposedApi: true,
@@ -228,6 +262,15 @@ function initTerminal() {
 
   const container = document.getElementById('termContainer');
   term.open(container);
+
+  // Enable WebGL renderer for better performance (falls back to canvas if unsupported)
+  try {
+    const webglAddon = new WebglAddon.WebglAddon();
+    webglAddon.onContextLoss(() => { webglAddon.dispose(); });
+    term.loadAddon(webglAddon);
+  } catch (e) {
+    console.warn('WebGL renderer not available, using canvas fallback:', e);
+  }
 
   // Fit after a short delay so the container has dimensions
   requestAnimationFrame(() => {
@@ -268,7 +311,11 @@ function doConnectWithExpires(url, token, expires) {
     setStatus('Disconnected');
     document.getElementById('connectPanel').style.display = 'flex';
     document.getElementById('terminalPanel').classList.remove('visible');
-    if (e.code === 4001) alert('Authentication failed');
+    if (e.code === 4001) {
+      alert('Authentication failed');
+      document.getElementById('autoConnectLoading').classList.remove('visible');
+      document.getElementById('connectForm').style.display = '';
+    }
     if (e.code === 4002) document.getElementById('expiredOverlay').classList.add('visible');
   };
   ws.onerror = () => setStatus('Disconnected');
@@ -285,6 +332,9 @@ function handleServerMessage(msg) {
   switch (msg.type) {
     case 'connected':
       setStatus('Connected');
+      // Hide loading if visible
+      document.getElementById('autoConnectLoading').classList.remove('visible');
+      document.getElementById('connectForm').style.display = '';
       document.getElementById('connectPanel').style.display = 'none';
       document.getElementById('terminalPanel').classList.add('visible');
       document.getElementById('btnInterrupt').disabled = false;
@@ -337,12 +387,10 @@ function sendInput(data) {
 }
 
 function doSend() {
-  const input = document.getElementById('inputMsg');
-  const content = input.value;
-  if (!content || !ws) return;
-  // Send via the structured message protocol (also writes to PTY via sendMessage)
-  ws.send(JSON.stringify({ type: 'send_message', content }));
-  input.value = '';
+  // Send Enter to submit any pending text in xterm's PTY buffer
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'input', data: '\r' }));
+  }
 }
 
 function doInterrupt() {
@@ -354,6 +402,19 @@ function doNewSession() {
     ws.send(JSON.stringify({ type: 'session_new' }));
     if (term) term.clear();
   }
+}
+
+function toggleSlashPanel() {
+  const panel = document.getElementById('slashPanel');
+  panel.classList.toggle('visible');
+}
+
+function sendSlashCommand(cmd) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'send_message', content: cmd }));
+  }
+  // Hide the panel after sending
+  document.getElementById('slashPanel').classList.remove('visible');
 }
 
 // Keep-alive ping
