@@ -4,9 +4,8 @@
 
 ## 快速开始——远程访问（手机）
 
-### 方式一：一键扫码连接（推荐）
-
 > 前提：电脑本地需要安装cloudflare，加速方法请看文档最后部分 [https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+
 ```bash
 # 检查cloudflared是否已经安装好
 cloudflared -v
@@ -41,47 +40,6 @@ Scan QR code to connect (expires in 5 min):
 
 如果 cloudflared 未安装或启动超时，会自动降级为本地模式（不影响正常使用）。
 
-### 方式二：手动分步启动
-
-#### 1：启动Bridge Server http://localhost:3456
-
-```bash
-npx claude-code-remote-control serve
-```
-
-![本机启动bridge server](./docs/images/bridge_server.png)
-
-#### 2：启动cloudflared 隧道
-
-```bash
-cloudflared tunnel --url http://localhost:3456
-```
-
-![本机启动cloudflare tunnel服务](./docs/images/cloudflare_server.png)手机浏览器打开上面划红线的地址
-
-#### 3：cloudflare链接你电脑的bridge server
-
-![cloudflare链接你电脑的bridge server](./docs/images/connect_to_bridge.png)
-Bridge URL自动获取，不需要输入手动修改！！   ，输入Bridge server的token ，点击Connect。
-
-#### 4：开始远程对话
-
-进入链接成功的界面，开始对话！到这里你已经成功了！你可以把这个网站发到你手机上操作啦。
-![链接成功](./docs/images/remote_web_view.png)
-
-## 编程使用
-
-```ts
-import { BridgeServer } from 'claude-code-remote-control'
-
-const server = new BridgeServer({
-  port: 3456,
-  token: 'my-secret',
-  claudeCwd: '/path/to/project',
-})
-await server.start()
-```
-
 ## CLI 命令参考
 
 ### `serve` — 启动 Bridge Server
@@ -90,15 +48,15 @@ await server.start()
 npx claude-code-remote-control serve [options]
 ```
 
-| 选项 | 说明 | 默认值 |
-|------|------|--------|
-| `-p, --port <port>` | 服务端口 | `3456` |
-| `-h, --host <host>` | 服务主机地址 | `0.0.0.0` |
-| `--cwd <dir>` | Claude Code 工作目录 | 当前目录 |
-| `--model <model>` | 指定 Claude 模型 | 默认模型 |
+| 选项                         | 说明                                                                | 默认值      |
+| ---------------------------- | ------------------------------------------------------------------- | ----------- |
+| `-p, --port <port>`        | 服务端口                                                            | `3456`    |
+| `-h, --host <host>`        | 服务主机地址                                                        | `0.0.0.0` |
+| `--cwd <dir>`              | Claude Code 工作目录                                                | 当前目录    |
+| `--model <model>`          | 指定 Claude 模型                                                    | 默认模型    |
 | `--permission-mode <mode>` | 权限模式：`default` \| `accept-edits` \| `bypass-permissions` | `default` |
-| `--tunnel` | 自动启动 cloudflared 隧道，提供公网访问 | 关闭 |
-| `-l, --log-level <level>` | 日志级别：`debug` \| `info` \| `warn` \| `error` | `info` |
+| `--tunnel`                 | 自动启动 cloudflared 隧道，提供公网访问                             | 关闭        |
+| `-l, --log-level <level>`  | 日志级别：`debug` \| `info` \| `warn` \| `error`            | `info`    |
 
 示例：
 
@@ -115,18 +73,50 @@ npx claude-code-remote-control serve --cwd /path/to/project
 # 调试模式
 npx claude-code-remote-control serve --log-level debug
 ```
-## Clouldflare安装加速
+
+## Clouldflare安装
+
+#### 方式一、国内加速
+
 ```bash
-# Homebrew 国内镜像加速配置（2026年更新）
+# 步骤1 Homebrew 国内镜像加速配置（2026年更新）
 export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
 export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.ustc.edu.cn/homebrew-core.git"
 export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
 export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
 export HOMEBREW_NO_ENV_HINTS="1"
 
-# 再执行Clouldflare安装，看官方文档
+# 步骤2 再执行Clouldflare安装脚本（如 brew install cloudflared ），看官方文档：
 # https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads
+
+# 步骤3
+cloudflared --version
 ```
+#### 方式二、安装二进制安装包
+```bash
+# 步骤1
+进入https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads 安装官方提供的releae包
+
+# 步骤2
+把Cloudflare安装路径移动到user/local/bin目录，或者加入系统环境变量，这一步建议直接让AI执行
+
+# 步骤3
+cloudflared --version
+```
+
+## 编程使用
+
+```ts
+import { BridgeServer } from 'claude-code-remote-control'
+
+const server = new BridgeServer({
+  port: 3456,
+  token: 'my-secret',
+  claudeCwd: '/path/to/project',
+})
+await server.start()
+```
+
 ## License
 
 MIT
