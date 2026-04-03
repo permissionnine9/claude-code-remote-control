@@ -277,72 +277,102 @@ export class BridgeServer {
     return `${this.tunnelUrl}?${params}`
   }
 
-  private startTunnel(): Promise<void> {
-    return new Promise((resolve) => {
-      const port = this.config.port
-      const proc = spawn('cloudflared', ['tunnel', '--url', `http://localhost:${port}`])
-      this.tunnelProcess = proc
+  private startTunnel(maxRetries = 2): Promise<void> {
+    let attempt = 0
 
-      let resolved = false
-      const timeout = setTimeout(() => {
-        if (!resolved) {
-          resolved = true
-          console.log('Tunnel startup timed out after 30s, falling back to local mode')
-          this.killTunnel()
-          this.printBanner()
-          resolve()
-        }
-      }, 30000)
+    const tryOnce = (): Promise<void> => {
+      attempt++
+      return new Promise((resolve) => {
+        const port = this.config.port
+        const proc = spawn('cloudflared', ['tunnel', '--url', `http://localhost:${port}`])
+        this.tunnelProcess = proc
 
-      const urlRegex = /\|\s*(https:\/\/[a-z0-9-]+\.trycloudflare\.com)\s*\|/
+        let resolved = false
+        let lastError = ''
+        const timeout = setTimeout(() => {
+          if (!resolved) {
+            resolved = true
+            console.log(`Tunnel startup timed out after 30s (attempt ${attempt}/${maxRetries})`)
+            this.killTunnel()
+            if (attempt < maxRetries) {
+              console.log(`Retrying tunnel in 3s...`)
+              setTimeout(() => tryOnce().then(resolve), 1000)
+            } else {
+              console.log('All tunnel attempts failed, falling back to local mode')
+              this.printBanner()
+              resolve()
+            }
+          }
+        }, 30000)
 
-      proc.stdout?.on('data', (data: Buffer) => {
-        const line = data.toString()
-        const match = line.match(urlRegex)
-        if (match && !resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          this.tunnelUrl = match[1]
-          this.tokenCreatedAt = Date.now()
-          this.printBanner()
-          resolve()
-        }
+        const urlRegex = /\|\s*(https:\/\/[a-z0-9-]+\.trycloudflare\.com)\s*\|/
+
+        proc.stdout?.on('data', (data: Buffer) => {
+          const line = data.toString()
+          const match = line.match(urlRegex)
+          if (match && !resolved) {
+            resolved = true
+            clearTimeout(timeout)
+            this.tunnelUrl = match[1]
+            this.tokenCreatedAt = Date.now()
+            this.printBanner()
+            resolve()
+          }
+        })
+
+        proc.stderr?.on('data', (data: Buffer) => {
+          const line = data.toString()
+          lastError = line
+          const match = line.match(urlRegex)
+          if (match && !resolved) {
+            resolved = true
+            clearTimeout(timeout)
+            this.tunnelUrl = match[1]
+            this.tokenCreatedAt = Date.now()
+            this.printBanner()
+            resolve()
+          }
+        })
+
+        proc.on('error', (err) => {
+          if (!resolved) {
+            resolved = true
+            clearTimeout(timeout)
+            console.log(`Failed to start tunnel: ${err.message} (attempt ${attempt}/${maxRetries})`)
+            if (attempt < maxRetries) {
+              console.log(`Retrying tunnel in 3s...`)
+              setTimeout(() => tryOnce().then(resolve), 1000)
+            } else {
+              console.log('All tunnel attempts failed, falling back to local mode')
+              this.printBanner()
+              resolve()
+            }
+          }
+        })
+
+        proc.on('exit', (code) => {
+          if (!resolved) {
+            resolved = true
+            clearTimeout(timeout)
+            console.log(`Tunnel process exited with code ${code} (attempt ${attempt}/${maxRetries})`)
+            if (lastError) {
+              console.log(`  cloudflared output: ${lastError.trim()}`)
+            }
+            if (attempt < maxRetries) {
+              console.log(`Retrying tunnel in 3s...`)
+              setTimeout(() => tryOnce().then(resolve), 1000)
+            } else {
+              console.log('All tunnel attempts failed, falling back to local mode')
+              this.printBanner()
+              resolve()
+            }
+          }
+          this.tunnelProcess = null
+        })
       })
+    }
 
-      proc.stderr?.on('data', (data: Buffer) => {
-        const line = data.toString()
-        const match = line.match(urlRegex)
-        if (match && !resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          this.tunnelUrl = match[1]
-          this.tokenCreatedAt = Date.now()
-          this.printBanner()
-          resolve()
-        }
-      })
-
-      proc.on('error', (err) => {
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          console.log(`Failed to start tunnel: ${err.message}, falling back to local mode`)
-          this.printBanner()
-          resolve()
-        }
-      })
-
-      proc.on('exit', (code) => {
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          console.log(`Tunnel process exited with code ${code}, falling back to local mode`)
-          this.printBanner()
-          resolve()
-        }
-        this.tunnelProcess = null
-      })
-    })
+    return tryOnce()
   }
 
   private killTunnel(): void {
