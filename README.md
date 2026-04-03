@@ -7,6 +7,10 @@
 ### 方式一：一键扫码连接（推荐）
 
 > 前提：电脑本地需要安装cloudflare，加速方法请看文档最后部分 [https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+```bash
+# 检查cloudflared是否已经安装好
+cloudflared -v
+```
 
 只需一条命令：
 
