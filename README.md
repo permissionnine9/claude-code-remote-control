@@ -6,7 +6,7 @@
 
 ### 方式一：一键扫码连接（推荐）
 
-> 前提：电脑本地需要安装cloudflare [https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+> 前提：电脑本地需要安装cloudflare，加速方法请看文档最后部分 [https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 
 只需一条命令：
 
@@ -111,7 +111,18 @@ npx claude-code-remote-control serve --cwd /path/to/project
 # 调试模式
 npx claude-code-remote-control serve --log-level debug
 ```
+## Clouldflare安装加速
+```bash
+# Homebrew 国内镜像加速配置（2026年更新）
+export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
+export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.ustc.edu.cn/homebrew-core.git"
+export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
+export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
+export HOMEBREW_NO_ENV_HINTS="1"
 
+# 再执行Clouldflare安装
+# ...
+```
 ## License
 
 MIT
