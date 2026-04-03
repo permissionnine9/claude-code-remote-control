@@ -18,6 +18,7 @@ dist/
 .idea/
 *.swp
 *.swo
+.claude
 *~
 
 # OS

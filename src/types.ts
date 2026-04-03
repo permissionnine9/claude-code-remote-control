@@ -39,7 +39,7 @@ export interface StreamEvent {
 // === Client → Bridge protocol ===
 
 export type ClientMessage =
-  | { type: 'auth'; token: string }
+  | { type: 'auth'; token: string; expires?: number }
   | { type: 'send_message'; content: string; uuid?: string }
   | { type: 'permission_response'; tool_use_id: string; behavior: 'allow' | 'deny'; updated_input?: Record<string, unknown>; feedback?: string }
   | { type: 'interrupt' }

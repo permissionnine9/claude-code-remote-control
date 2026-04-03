@@ -1,9 +1,11 @@
 import { createServer as createHttpServer, type IncomingMessage } from 'http'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { spawn, type ChildProcess } from 'child_process'
 import cors from 'cors'
 import express from 'express'
 import { WebSocketServer, WebSocket } from 'ws'
+import qrcode from 'qrcode-terminal'
 import { ClaudeProcess } from './claude-process.js'
 import { Logger, generateToken } from './utils.js'
 import type { BridgeConfig, ClientMessage, ServerMessage, BridgeStatus } from './types.js'
@@ -19,6 +21,8 @@ export class BridgeServer {
   private authToken: string
   private logger = new Logger('info')
   private tunnelUrl = ''
+  private tunnelProcess: ChildProcess | null = null
+  private tokenCreatedAt = 0
   private config: BridgeConfig
 
   constructor(config: BridgeConfig) {
@@ -52,6 +56,19 @@ export class BridgeServer {
     // Health check endpoint
     this.app.get('/health', (_req, res) => {
       res.json({ status: 'ok', sessionId: this.claudeProcess.getSessionId() })
+    })
+
+    // Verify token endpoint (for QR code flow)
+    this.app.get('/verify-token', (req, res) => {
+      const token = req.query.token as string
+      const expires = parseInt(req.query.expires as string, 10)
+      if (token !== this.authToken) {
+        res.json({ valid: false, reason: 'invalid_token' })
+      } else if (this.tokenCreatedAt && Date.now() > expires) {
+        res.json({ valid: false, reason: 'expired' })
+      } else {
+        res.json({ valid: true })
+      }
     })
 
     // 2. Create HTTP server
@@ -112,8 +129,12 @@ export class BridgeServer {
       // Server still starts, just Claude is not running
     }
 
-    // Print banner
-    this.printBanner()
+    // Print banner (or start tunnel first)
+    if (this.config.tunnel) {
+      await this.startTunnel()
+    } else {
+      this.printBanner()
+    }
   }
 
   private handleConnection(ws: WebSocket, _req: IncomingMessage): void {
@@ -128,6 +149,12 @@ export class BridgeServer {
       // First message must be auth
       if (!authenticated) {
         if (msg.type === 'auth' && (msg as any).token === this.authToken) {
+          // Check expires if present
+          const expires = (msg as any).expires as number | undefined
+          if (expires && Date.now() > expires) {
+            ws.close(4002, 'Token expired')
+            return
+          }
           authenticated = true
           this.clients.add(ws)
           ws.send(JSON.stringify({
@@ -222,17 +249,105 @@ export class BridgeServer {
     const host = this.config.host === '0.0.0.0' ? 'localhost' : this.config.host
     const lines = [
       '',
-      '╔════════════════════════════════════════════════════════╗',
-      '║   Claude Code Remote Control Bridge                    ║',
-      '╠════════════════════════════════════════════════════════╣',
-      `║   Web:    http://${host}:${this.config.port}${' '.repeat(Math.max(0, 37 - host.length - String(this.config.port).length))}║`,
-      `║   Token:  ${this.authToken}${' '.repeat(Math.max(0, 33 - this.authToken.length))}║`,
+      '╔════════════════════════════════════════════════════════════╗',
+      '║   Claude Code Remote Control Bridge                        ║',
+      '╠════════════════════════════════════════════════════════════╣',
+      `║   Web:    http://${host}:${this.config.port}${' '.repeat(Math.max(0, 41 - host.length - String(this.config.port).length))}║`,
+      `║   Token:  ${this.authToken}${' '.repeat(Math.max(0, 49 - this.authToken.length))}║`,
     ]
     if (this.tunnelUrl) {
-      lines.push(`║   Tunnel: ${this.tunnelUrl}${' '.repeat(Math.max(0, 32 - this.tunnelUrl.length))}║`)
+      lines.push(`║   Tunnel: ${this.tunnelUrl}${' '.repeat(Math.max(0, 36 - this.tunnelUrl.length))}║`)
     }
-    lines.push('╚════════════════════════════════════════════════════════╝')
+    lines.push('╚════════════════════════════════════════════════════════════╝')
     console.log(lines.join('\n'))
+
+    // Print QR code in tunnel mode
+    if (this.tunnelUrl) {
+      const qrLink = this.generateQrLink()
+      console.log('\nScan QR code to connect (expires in 5 min):')
+      qrcode.generate(qrLink, { small: true })
+    }
+  }
+
+  private generateQrLink(): string {
+    const expires = this.tokenCreatedAt + 5 * 60 * 1000
+    const params = `token=${encodeURIComponent(this.authToken)}&expires=${expires}`
+    return `${this.tunnelUrl}?${params}`
+  }
+
+  private startTunnel(): Promise<void> {
+    return new Promise((resolve) => {
+      const port = this.config.port
+      const proc = spawn('cloudflared', ['tunnel', '--url', `http://localhost:${port}`])
+      this.tunnelProcess = proc
+
+      let resolved = false
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          console.log('Tunnel startup timed out after 30s, falling back to local mode')
+          this.killTunnel()
+          this.printBanner()
+          resolve()
+        }
+      }, 30000)
+
+      const urlRegex = /\|\s*(https:\/\/[a-z0-9-]+\.trycloudflare\.com)\s*\|/
+
+      proc.stdout?.on('data', (data: Buffer) => {
+        const line = data.toString()
+        const match = line.match(urlRegex)
+        if (match && !resolved) {
+          resolved = true
+          clearTimeout(timeout)
+          this.tunnelUrl = match[1]
+          this.tokenCreatedAt = Date.now()
+          this.printBanner()
+          resolve()
+        }
+      })
+
+      proc.stderr?.on('data', (data: Buffer) => {
+        const line = data.toString()
+        const match = line.match(urlRegex)
+        if (match && !resolved) {
+          resolved = true
+          clearTimeout(timeout)
+          this.tunnelUrl = match[1]
+          this.tokenCreatedAt = Date.now()
+          this.printBanner()
+          resolve()
+        }
+      })
+
+      proc.on('error', (err) => {
+        if (!resolved) {
+          resolved = true
+          clearTimeout(timeout)
+          console.log(`Failed to start tunnel: ${err.message}, falling back to local mode`)
+          this.printBanner()
+          resolve()
+        }
+      })
+
+      proc.on('exit', (code) => {
+        if (!resolved) {
+          resolved = true
+          clearTimeout(timeout)
+          console.log(`Tunnel process exited with code ${code}, falling back to local mode`)
+          this.printBanner()
+          resolve()
+        }
+        this.tunnelProcess = null
+      })
+    })
+  }
+
+  private killTunnel(): void {
+    if (this.tunnelProcess) {
+      this.tunnelProcess.kill()
+      this.tunnelProcess = null
+    }
   }
 
   async stop(): Promise<void> {
@@ -244,6 +359,9 @@ export class BridgeServer {
 
     // Stop Claude process
     await this.claudeProcess.stop()
+
+    // Kill tunnel process
+    this.killTunnel()
 
     // Close servers
     this.wss?.close()

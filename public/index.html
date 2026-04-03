@@ -64,6 +64,12 @@
   /* xterm overrides */
   .xterm { height: 100%; }
   .xterm-viewport { overflow-y: auto !important; }
+
+  /* Expired overlay */
+  #expiredOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.92); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; }
+  #expiredOverlay.visible { display: flex; }
+  #expiredOverlay h2 { color: #fca5a5; font-size: 20px; margin-bottom: 12px; }
+  #expiredOverlay p { color: #94a3b8; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -80,6 +86,12 @@
     <button id="btnNewSession" class="btn-new" onclick="doNewSession()" disabled>New Session</button>
   </div>
 </header>
+
+<!-- Expired overlay -->
+<div id="expiredOverlay">
+  <h2>Token 已失效</h2>
+  <p>请重新启动服务获取新的连接</p>
+</div>
 
 <!-- Connect Panel -->
 <div id="connectPanel">
@@ -125,6 +137,38 @@ let fitAddon = null;
 (function() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   document.getElementById('inputUrl').value = proto + '//' + location.host + '/ws';
+
+  // Auto-connect from URL params (QR code flow)
+  const params = new URLSearchParams(location.search);
+  const autoToken = params.get('token');
+  const autoExpires = params.get('expires');
+
+  if (autoToken && autoExpires) {
+    const expiresNum = parseInt(autoExpires, 10);
+
+    // Client-side expiry check
+    if (Date.now() > expiresNum) {
+      document.getElementById('expiredOverlay').classList.add('visible');
+      return;
+    }
+
+    // Server-side verify (handles clock skew)
+    fetch(`/verify-token?token=${encodeURIComponent(autoToken)}&expires=${autoExpires}`)
+      .then(r => r.json())
+      .then(result => {
+        if (!result.valid) {
+          document.getElementById('expiredOverlay').classList.add('visible');
+          return;
+        }
+        const url = proto + '//' + location.host + '/ws';
+        doConnectWithExpires(url, autoToken, expiresNum);
+      })
+      .catch(() => {
+        // If verify fails, still try to connect
+        const url = proto + '//' + location.host + '/ws';
+        doConnectWithExpires(url, autoToken, expiresNum);
+      });
+  }
 })();
 
 function setStatus(text) {
@@ -204,14 +248,10 @@ function initTerminal() {
   ro.observe(container);
 }
 
-function doConnect() {
-  const url = document.getElementById('inputUrl').value.trim() || `ws://${location.host}/ws`;
-  const token = document.getElementById('inputToken').value.trim();
-  if (!token) { alert('Token required'); return; }
-
+function doConnectWithExpires(url, token, expires) {
   ws = new WebSocket(url);
   ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'auth', token }));
+    ws.send(JSON.stringify({ type: 'auth', token, expires }));
   };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
@@ -222,8 +262,16 @@ function doConnect() {
     document.getElementById('connectPanel').style.display = 'flex';
     document.getElementById('terminalPanel').classList.remove('visible');
     if (e.code === 4001) alert('Authentication failed');
+    if (e.code === 4002) document.getElementById('expiredOverlay').classList.add('visible');
   };
   ws.onerror = () => setStatus('Disconnected');
+}
+
+function doConnect() {
+  const url = document.getElementById('inputUrl').value.trim() || `ws://${location.host}/ws`;
+  const token = document.getElementById('inputToken').value.trim();
+  if (!token) { alert('Token required'); return; }
+  doConnectWithExpires(url, token, undefined);
 }
 
 function handleServerMessage(msg) {
@@ -234,6 +282,9 @@ function handleServerMessage(msg) {
       document.getElementById('terminalPanel').classList.add('visible');
       document.getElementById('btnInterrupt').disabled = false;
       document.getElementById('btnNewSession').disabled = false;
+
+      // Clean URL params
+      if (location.search) history.replaceState(null, '', location.pathname);
 
       initTerminal();
 
