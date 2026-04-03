@@ -38,7 +38,7 @@ Scan QR code to connect (expires in 5 min):
 
 手机扫码 → 自动连接，无需手动输入 Token。QR 码 5 分钟内有效，过期后需重新启动服务。
 
-![链接成功](./docs/images/remote_web_view.png)
+<img src="./docs/images/remote_web_view.png" alt="链接成功" width="400" />
 
 如果 cloudflared 未安装或启动超时，会自动降级为本地模式（不影响正常使用）。
 
