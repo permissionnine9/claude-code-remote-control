@@ -42,6 +42,10 @@ Scan QR code to connect (expires in 5 min):
 
 如果 cloudflared 未安装或启动超时，会自动降级为本地模式（不影响正常使用）。
 
+## OpenClaw接入
+
+复制s kill_for_openclaw/claude-code-remote到你电脑本地 ～/.openclaw/skills目录下，然后就可以在openclaw中唤起claude-code-remote，比如你可以说：“帮我在XX目录下开启claude code remote，...”
+
 ## CLI 命令参考
 
 ### `serve` — 启动 Bridge Server
