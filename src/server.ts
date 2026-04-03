@@ -264,14 +264,15 @@ export class BridgeServer {
     // Print QR code in tunnel mode
     if (this.tunnelUrl) {
       const qrLink = this.generateQrLink()
-      console.log('\nScan QR code to connect (expires in 5 min):')
+      console.log(`\nScan QR code to connect (expires in ${this.config.tokenExpiresMinutes || 5} min):`)
+      console.log(`\nLink: ${qrLink}`)
       console.log('\nIf the page show 1033 error code,Please wait 1 minute and try again later!')
       qrcode.generate(qrLink, { small: true })
     }
   }
 
   private generateQrLink(): string {
-    const expires = this.tokenCreatedAt + 5 * 60 * 1000
+    const expires = this.tokenCreatedAt + (this.config.tokenExpiresMinutes || 5) * 60 * 1000
     const params = `token=${encodeURIComponent(this.authToken)}&expires=${expires}`
     return `${this.tunnelUrl}?${params}`
   }

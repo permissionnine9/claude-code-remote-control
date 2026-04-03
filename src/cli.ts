@@ -23,6 +23,7 @@ program
   .option('--permission-mode <mode>', 'Permission mode: default | accept-edits | bypass-permissions', 'default')
   .option('--tunnel', 'Auto-start cloudflared tunnel for public access')
   .option('-l, --log-level <level>', 'Log level: debug | info | warn | error', 'info')
+  .option('--token-expires <minutes>', 'Token expiration time in minutes (default: 5)', '5')
   .action(async (options) => {
     const config: BridgeConfig = {
       port: parseInt(options.port),
@@ -33,6 +34,7 @@ program
       claudePermissionMode: options.permissionMode,
       tunnel: options.tunnel,
       logLevel: options.logLevel,
+      tokenExpiresMinutes: parseInt(options.tokenExpires),
     }
 
     const server = new BridgeServer(config)

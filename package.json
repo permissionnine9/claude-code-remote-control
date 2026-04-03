@@ -1,6 +1,6 @@
 {
   "name": "claude-code-remote-control",
-  "version": "2.1.0",
+  "version": "2.1.2",
   "description": "Remote control bridge for Claude Code CLI — WebSocket-based viewer and permission approval",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

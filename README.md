@@ -78,6 +78,40 @@ const server = new BridgeServer({
 await server.start()
 ```
 
+## CLI 命令参考
+
+### `serve` — 启动 Bridge Server
+
+```bash
+npx claude-code-remote-control serve [options]
+```
+
+| 选项 | 说明 | 默认值 |
+|------|------|--------|
+| `-p, --port <port>` | 服务端口 | `3456` |
+| `-h, --host <host>` | 服务主机地址 | `0.0.0.0` |
+| `--cwd <dir>` | Claude Code 工作目录 | 当前目录 |
+| `--model <model>` | 指定 Claude 模型 | 默认模型 |
+| `--permission-mode <mode>` | 权限模式：`default` \| `accept-edits` \| `bypass-permissions` | `default` |
+| `--tunnel` | 自动启动 cloudflared 隧道，提供公网访问 | 关闭 |
+| `-l, --log-level <level>` | 日志级别：`debug` \| `info` \| `warn` \| `error` | `info` |
+
+示例：
+
+```bash
+# 默认启动
+npx claude-code-remote-control serve
+
+# 指定端口和模型，开启隧道
+npx claude-code-remote-control serve --port 8080 --model claude-sonnet-4-6 --tunnel
+
+# 自定义工作目录
+npx claude-code-remote-control serve --cwd /path/to/project
+
+# 调试模式
+npx claude-code-remote-control serve --log-level debug
+```
+
 ## License
 
 MIT

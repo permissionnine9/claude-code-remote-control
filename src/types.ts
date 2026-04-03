@@ -75,4 +75,5 @@ export interface BridgeConfig {
   claudePermissionMode?: 'default' | 'accept-edits' | 'bypass-permissions'
   tunnel?: boolean
   logLevel?: 'debug' | 'info' | 'warn' | 'error'
+  tokenExpiresMinutes?: number
 }
