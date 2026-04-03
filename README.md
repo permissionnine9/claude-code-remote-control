@@ -7,7 +7,6 @@
 - openclaw控制 claude-code-remote-control，解决code agent黑盒coding的问题、可随时介入、终端claude code的运行过程
 - 移动端im工具接入
 
-
 ## 快速开始
 
 ```bash
@@ -47,12 +46,22 @@ npx claude-code-remote-control serve --tunnel
 ```bash
 # 终端 1：启动服务
 npx claude-code-remote-control serve
+```
 
+![本机启动bridge server](./docs/images/bridge_server.png)
+
+```bash
 # 终端 2：启动隧道
 cloudflared tunnel --url http://localhost:3456
 ```
 
-手机浏览器打开输出的地址，输入 token 连接。底部有输入框和虚拟快捷键栏（Tab、Ctrl+C、方向键等）。
+![本机启动cloudflare tunnel服务](./docs/images/cloudflare_server.png)手机浏览器打开上面划红线的地址
+
+![cloudflare链接你电脑的bridge server](./docs/images/connect_to_bridge.png)
+输入 ws://localhost:3456/ws   和Bridge server的token ，点击Connect。
+
+进入链接成功的界面，开始对话！到这里你已经成功了！你可以把这个网站发到你手机上操作啦。
+![链接成功](./docs/images/remote_web_view.png)
 
 ## 编程使用
 

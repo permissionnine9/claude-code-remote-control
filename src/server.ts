@@ -222,16 +222,16 @@ export class BridgeServer {
     const host = this.config.host === '0.0.0.0' ? 'localhost' : this.config.host
     const lines = [
       '',
-      '╔══════════════════════════════════════════════╗',
-      '║   Claude Code Remote Control Bridge          ║',
-      '╠══════════════════════════════════════════════╣',
-      `║   Web:    http://${host}:${this.config.port}${' '.repeat(Math.max(0, 27 - host.length - String(this.config.port).length))}║`,
+      '╔════════════════════════════════════════════════════════╗',
+      '║   Claude Code Remote Control Bridge                    ║',
+      '╠════════════════════════════════════════════════════════╣',
+      `║   Web:    http://${host}:${this.config.port}${' '.repeat(Math.max(0, 37 - host.length - String(this.config.port).length))}║`,
       `║   Token:  ${this.authToken}${' '.repeat(Math.max(0, 33 - this.authToken.length))}║`,
     ]
     if (this.tunnelUrl) {
       lines.push(`║   Tunnel: ${this.tunnelUrl}${' '.repeat(Math.max(0, 32 - this.tunnelUrl.length))}║`)
     }
-    lines.push('╚══════════════════════════════════════════════╝')
+    lines.push('╚════════════════════════════════════════════════════════╝')
     console.log(lines.join('\n'))
   }
 
