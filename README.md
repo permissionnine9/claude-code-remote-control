@@ -44,7 +44,7 @@ Scan QR code to connect (expires in 5 min):
 
 ## OpenClaw接入
 
-复制s kill_for_openclaw/claude-code-remote到你电脑本地 ～/.openclaw/skills目录下，然后就可以在openclaw中唤起claude-code-remote，比如你可以说：“帮我在XX目录下开启claude code remote，...”
+复制 ./skill_for_openclaw/claude-code-remote到你电脑本地 ～/.openclaw/skills目录下，然后就可以在openclaw中唤起claude-code-remote。比如,你可以说：“帮我在XX目录下开启claude code remote，...”
 
 ## CLI 命令参考
 
