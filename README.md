@@ -120,8 +120,8 @@ export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
 export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
 export HOMEBREW_NO_ENV_HINTS="1"
 
-# 再执行Clouldflare安装
-# ...
+# 再执行Clouldflare安装，看官方文档
+# https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads
 ```
 ## License
 
