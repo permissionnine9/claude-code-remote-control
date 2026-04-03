@@ -2,7 +2,6 @@
 name: claude-code-remote
 description: Launch a Claude Code remote control session via claude-code-remote-control. Use when the user wants to start a remote Claude Code session in a specific project directory, control Claude Code from a browser/mobile, or mentions claude-code-remote-control.
 ---
-
 # Claude Code Remote Control
 
 Start a browser-accessible Claude Code session in a specified project directory.
@@ -23,6 +22,7 @@ npx claude-code-remote-control serve --cwd <project-dir> [options]
 ```
 
 Options:
+
 - `--cwd <dir>` — Claude Code working directory (required)
 - `-p, --port <port>` — Port (default: 3456)
 - `-t, --token <token>` — Auth token (auto-generated if omitted)
@@ -42,10 +42,12 @@ npx claude-code-remote-control serve --cwd /path/to/project --tunnel --token-exp
 ```
 
 默认参数：
+
 - `--token-expires 10`（token 有效期 10 分钟）
 - `--tunnel`（开启公网隧道，除非用户不需要公网访问）
 
 如果端口被占用，先 kill 再启动：
+
 ```bash
 lsof -ti:<port> | xargs kill -9 2>/dev/null; sleep 1; npx ...
 ```
@@ -87,16 +89,19 @@ qrencode -o /tmp/openclaw/claude-remote-qr.png "<base-url>?token=<token>&expires
 **必须**将 token 和 expires 参数拼接到 URL 上，否则用户需要手动输入 token。
 
 计算 expires 时间戳（当前 UTC 时间 + 10 分钟，**单位为毫秒**）：
+
 ```bash
 date -u -v+10M +%s%3N
 ```
 
 最终 URL 格式：
+
 ```
 <base-url>?token=<token>&expires=<unix-timestamp-ms>
 ```
 
 例如（毫秒级时间戳，13位）：
+
 ```
 https://xxx.trycloudflare.com?token=mniyk4w-xxx&expires=1775208720000
 ```
@@ -105,10 +110,30 @@ https://xxx.trycloudflare.com?token=mniyk4w-xxx&expires=1775208720000
 
 ### 4. Report to user
 
-告诉用户：
-- 带 token+expires 参数的完整公网/本地 URL（可直接打开自动连接）
-- URL 10 分钟内有效，过期需重新生成
-- Token 过期后可以 kill 进程重新启动服务
+**必须使用以下固定格式回复用户：**
+
+```
+✅ Claude Code 已启动
+
+📂 工作目录：/path/to/project
+🔗 访问地址：<完整 trycloudflare.com URL?token=xxx&expires=xxx>
+⏳ 链接 10 分钟内有效
+```
+
+**规则：**
+
+- 必须包含工作目录完整路径
+- 必须包含带 token+expires 参数的完整 URL
+- 必须提示有效期
+- 不要省略任何信息，不要只发 localhost:port
+
+### 5. Stop the server
+
+直接 kill 端口即可，无需额外清理：
+
+```bash
+lsof -ti:<port> | xargs kill -9
+```
 
 ## Important Notes
 
